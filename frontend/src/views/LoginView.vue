@@ -85,9 +85,32 @@ function friendlySendError(error: unknown): string {
   return '验证码发送失败，请稍后重试'
 }
 
+function getSafeRedirect(redirect: unknown) {
+  if (
+    typeof redirect !== 'string' ||
+    !redirect.startsWith('/') ||
+    redirect.startsWith('//') ||
+    redirect.includes('\\')
+  ) {
+    return '/chat'
+  }
+
+  try {
+    const resolved = router.resolve(redirect)
+    const isFallbackRoute = resolved.matched.some(record => record.path.includes(':pathMatch'))
+
+    if (!resolved.matched.length || isFallbackRoute || resolved.path === '/' || resolved.path === '/login') {
+      return '/chat'
+    }
+
+    return resolved.fullPath
+  } catch {
+    return '/chat'
+  }
+}
+
 async function redirectAfterLogin() {
-  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/chat'
-  await router.push(redirect)
+  await router.replace(getSafeRedirect(route.query.redirect))
 }
 
 async function handlePasswordLogin() {

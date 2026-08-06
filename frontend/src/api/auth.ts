@@ -7,15 +7,7 @@ interface PortalLoginResponse {
   success?: boolean
   message?: string
   data?: Record<string, unknown>
-  user_id?: unknown
-  userId?: unknown
   access_token?: unknown
-  accessToken?: unknown
-  token?: unknown
-}
-
-interface LoginStatusResponse {
-  login?: boolean
 }
 
 const MOBILE_PATTERN = /^1[3-9]\d{9}$/
@@ -35,47 +27,17 @@ function readIdentifier(value: unknown) {
   return readString(value)
 }
 
-function readNumber(value: unknown) {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value
-  }
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : undefined
-  }
-  return undefined
-}
-
-function normalizeLoginInfo(response: PortalLoginResponse, mobile: string): LoginInfo {
+function normalizeLoginInfo(response: PortalLoginResponse): LoginInfo {
   if (response.success === false) {
     throw new Error(response.message || '登录失败')
   }
 
   const payload = response.data && typeof response.data === 'object' ? response.data : {}
-  const conversationPayload =
-    payload.conversation && typeof payload.conversation === 'object'
-      ? payload.conversation as Record<string, unknown>
-      : {}
-  const userId =
-    readIdentifier(payload.id) ||
-    readIdentifier(payload.userId) ||
-    readIdentifier(response.user_id) ||
-    readIdentifier(response.userId)
-  const accessToken =
-    readString(payload.access_token) ||
-    readString(payload.accessToken) ||
-    readString(payload.token) ||
-    readString(response.access_token) ||
-    readString(response.accessToken) ||
-    readString(response.token) ||
-    readString(response.message)
-  const initialConversationId =
-    readNumber(payload.initialConversationId) ||
-    readNumber(payload.initial_conversation_id) ||
-    readNumber(conversationPayload.id)
+  const userId = readIdentifier(payload.id)
+  const accessToken = readString(response.access_token)
 
   if (!userId) {
-    throw new Error('登录成功但后端未返回 user_id')
+    throw new Error('登录成功但后端未返回 data.id')
   }
 
   if (!accessToken) {
@@ -84,15 +46,13 @@ function normalizeLoginInfo(response: PortalLoginResponse, mobile: string): Logi
 
   return {
     userId,
-    accessToken,
-    initialConversationId
+    accessToken
   }
 }
 
 async function login(
   loginType: PortalLoginType,
   credential: Record<string, string>,
-  mobile: string,
   fallback: string
 ) {
   try {
@@ -100,7 +60,7 @@ async function login(
       loginType,
       credential
     })
-    const loginInfo = normalizeLoginInfo(data, mobile)
+    const loginInfo = normalizeLoginInfo(data)
 
     saveLoginInfo(loginInfo)
     return loginInfo
@@ -116,7 +76,6 @@ export async function loginByPassword(mobile: string, password: string) {
       mobile,
       password
     },
-    mobile,
     '手机号或密码登录失败'
   )
 }
@@ -144,19 +103,6 @@ export async function loginBySms(mobile: string, smsCode: string) {
       mobile,
       smsCode
     },
-    mobile,
     '验证码登录失败'
   )
-}
-
-export async function checkLoginStatus(userId: string) {
-  try {
-    const { data } = await http.post<LoginStatusResponse>('/v1/account/status', {
-      User_id: userId
-    })
-
-    return Boolean(data?.login)
-  } catch {
-    return false
-  }
 }

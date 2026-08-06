@@ -23,17 +23,11 @@ export function saveInitialConversationId(initialConversationId: number) {
 }
 
 export function readLoginInfo(): LoginInfo | null {
-  const userId = window.localStorage.getItem(USER_ID_KEY)
-  const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY)
+  const userId = window.localStorage.getItem(USER_ID_KEY)?.trim()
+  const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY)?.trim()
   const initialConversationId = Number(window.localStorage.getItem(INITIAL_CONVERSATION_ID_KEY))
 
   if (!userId || !accessToken) {
-    if (import.meta.env.DEV) {
-      return {
-        userId: '9001',
-        accessToken: 'local-dev'
-      }
-    }
     return null
   }
 

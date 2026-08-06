@@ -38,11 +38,14 @@ export function getErrorMessage(error: unknown, fallback: string) {
 http.interceptors.response.use(
     response => response,
     error => {
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
+      const isLoginRequest = axios.isAxiosError(error) && error.config?.url?.endsWith('/auth/portal/login')
+
+      if (axios.isAxiosError(error) && error.response?.status === 401 && !isLoginRequest) {
         clearLoginInfo()
 
         if (window.location.pathname !== '/login') {
-          window.location.assign('/login')
+          const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
+          window.location.assign(`/login?redirect=${encodeURIComponent(currentPath)}`)
         }
       }
 

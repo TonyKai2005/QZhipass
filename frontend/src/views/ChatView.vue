@@ -4,6 +4,7 @@ import {ElMessage} from 'element-plus'
 import {useRouter} from 'vue-router'
 import BrandLogo from '../components/BrandLogo.vue'
 import http, {getErrorMessage} from '../api/http'
+import {listAvailableModels, type ModelPayload} from '../api/conversation'
 import {readLoginInfo, saveInitialConversationId} from '../api/session'
 import {useAuthStore} from '../stores/auth'
 import {
@@ -166,20 +167,7 @@ function selectModel(val: string) {
 }
 
 function toggleModelDropdown() {
-  onMounted(() => {
-
-    void listAvailableModels()
-        .then(availableModels => {
-          if (availableModels.length) {
-            models.value = availableModels
-            if (!availableModels.some(model => model.modelKey === selectedModel.value)) {
-              selectedModel.value = availableModels[0].modelKey
-            }
-          }
-        })
-        .catch(error => ElMessage.error(getErrorMessage(error, '读取模型列表失败')))
-    void initializeConversationFromLogin()
-    window.addEventListener('keydown', handleGlobalKeydown)
+  showModelDropdown.value = !showModelDropdown.value
 }
 
 function handleGlobalKeydown(e: KeyboardEvent) {
@@ -193,7 +181,17 @@ function handleGlobalKeydown(e: KeyboardEvent) {
 }
 
 onMounted(() => {
-  initializeConversationFromLogin()
+  void listAvailableModels()
+      .then(availableModels => {
+        if (availableModels.length) {
+          models.value = availableModels
+          if (!availableModels.some(model => model.modelKey === selectedModel.value)) {
+            selectedModel.value = availableModels[0].modelKey
+          }
+        }
+      })
+      .catch(error => ElMessage.error(getErrorMessage(error, '读取模型列表失败')))
+  void initializeConversationFromLogin()
   window.addEventListener('keydown', handleGlobalKeydown)
 })
 
@@ -246,7 +244,7 @@ watch(
   () => nextTick(scrollToBottom),
 )
 
-const modelLabel = computed(() => models.find(m => m.value === selectedModel.value)?.label ?? '')
+const modelLabel = computed(() => models.value.find(m => m.modelKey === selectedModel.value)?.displayName ?? '')
 const agentLabel = computed(() => agents.find(a => a.value === selectedAgent.value)?.label ?? '')
 </script>
 
@@ -312,10 +310,14 @@ const agentLabel = computed(() => agents.find(a => a.value === selectedAgent.val
 
       <!-- Bottom user area -->
       <div class="border-t border-gray-100 px-4 py-3">
-        <div class="mb-2 flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-gray-500 transition hover:bg-gray-50 cursor-pointer">
+        <button
+          type="button"
+          class="mb-2 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-gray-500 transition hover:bg-gray-50"
+          @click="router.push('/account/settings')"
+        >
           <el-icon :size="16"><Setting /></el-icon>
           <span>系统设置</span>
-        </div>
+        </button>
         <div class="flex items-center gap-3">
           <div
             class="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white"
@@ -458,13 +460,13 @@ const agentLabel = computed(() => agents.find(a => a.value === selectedAgent.val
               >
                 <button
                   v-for="m in models"
-                  :key="m.value"
+                  :key="m.modelKey"
                   class="flex w-full items-center gap-3 px-3 py-2.5 text-sm transition hover:bg-blue-50"
-                  :class="selectedModel === m.value ? 'text-blue-600 font-medium bg-blue-50' : 'text-gray-600'"
-                  @click.stop="selectModel(m.value)"
+                  :class="selectedModel === m.modelKey ? 'text-blue-600 font-medium bg-blue-50' : 'text-gray-600'"
+                  @click.stop="selectModel(m.modelKey)"
                 >
-                  <span class="flex-1 text-left">{{ m.label }}</span>
-                  <svg v-if="selectedModel === m.value" class="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span class="flex-1 text-left">{{ m.displayName }}</span>
+                  <svg v-if="selectedModel === m.modelKey" class="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
                   </svg>
                 </button>
